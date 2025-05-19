@@ -26,12 +26,13 @@ import {
   PreviewField,
 } from '@payloadcms/plugin-seo/fields'
 import { slugField } from '@/fields/slug'
+import { isAdmin } from '@/access/admin'
 
 export const Posts: CollectionConfig<'posts'> = {
   slug: 'posts',
   access: {
     create: authenticated,
-    delete: authenticated,
+    delete: isAdmin,
     read: authenticatedOrPublished,
     update: authenticated,
   },
@@ -73,6 +74,7 @@ export const Posts: CollectionConfig<'posts'> = {
       name: 'title',
       type: 'text',
       required: true,
+      // localized: true
     },
     {
       type: 'tabs',

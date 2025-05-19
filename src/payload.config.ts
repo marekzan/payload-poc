@@ -3,6 +3,7 @@ import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
 
+import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { vercelBlobStorage } from "@payloadcms/storage-vercel-blob"
 
@@ -13,6 +14,7 @@ import { Posts } from './collections/Posts'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
+import { Plugin } from 'payload'
 import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
@@ -57,24 +59,16 @@ export default buildConfig({
       ],
     },
   },
-  // This config helps us configure global or default features that the other editors can inherit
+  // localization: {
+  //   locales: ['en', 'de'],
+  //   defaultLocale: 'de',
+  // },
   editor: defaultLexical,
-  db: postgresAdapter({
-    pool: {
-      connectionString: process.env.POSTGRES_URL,
-    },
-  }), collections: [Pages, Posts, Media, Categories, Users],
+  db: determineDb(),
+  collections: [Pages, Posts, Media, Categories, Users],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
-  plugins: [
-    ...plugins,
-    vercelBlobStorage({
-      collections: {
-        media: true,
-      },
-      token: process.env.BLOB_READ_WRITE_TOKEN || '',
-    }),
-  ],
+  plugins: determinePlugins(plugins),
   secret: process.env.PAYLOAD_SECRET,
   sharp,
   typescript: {
@@ -96,3 +90,36 @@ export default buildConfig({
     tasks: [],
   },
 })
+
+function determineDb() {
+  if (process.env.NODE_ENV === "production") {
+    return postgresAdapter({
+      pool: {
+        connectionString: process.env.POSTGRES_URL,
+      },
+    })
+  }
+  return sqliteAdapter({
+    client: {
+      url: process.env.DATABASE_URI || ''
+    }
+
+  })
+}
+
+function determinePlugins(defaultPlugins: Plugin[]) {
+  if (process.env.NODE_ENV === 'production') {
+    return [
+      ...defaultPlugins,
+      vercelBlobStorage({
+        collections: {
+          media: true,
+        },
+        token: process.env.BLOB_READ_WRITE_TOKEN || '',
+      })
+    ]
+  }
+  return [
+    ...defaultPlugins
+  ]
+}
